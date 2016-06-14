@@ -22,8 +22,3 @@ Route::get('/board/assigner/key/{key}/token/{token}/board/{id}', 'BoardsControll
 // バーンダウンチャートの表示
 Route::get('/board/burndown', 'BoardsController@burndown');
 
-// テスト
-Route::get('/test', function() {
-    return '<a href="http://rc.hapitas.jp">http://rc.hapitas.jp</a>';
-});
-
