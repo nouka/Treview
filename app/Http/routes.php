@@ -24,6 +24,6 @@ Route::get('/board/burndown', 'BoardsController@burndown');
 
 // テスト
 Route::get('/test', function() {
-    return '<a href="http://rcsp.hapitas.jp/">http://rcsp.hapitas.jp/</a>';
+    return '<a href="https://rcsp.hapitas.jp/auth/login">https://rcsp.hapitas.jp/auth/login</a>';
 });
 
