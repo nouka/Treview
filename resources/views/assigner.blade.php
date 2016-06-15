@@ -34,6 +34,7 @@
                     <th>レーン</th>
                     <th>カード数</th>
                     <th>3人以上のレビューア</th>
+                    <th>レビューにかかった平均日数</th>
                     <th>割合</th>
                 </tr>
             </thead>
@@ -42,7 +43,8 @@
                     <tr>
                         <td>{{ $data['listName'] }}</rd>
                         <td>{{ $data['allCardsCount'] }}</td>
-                        <td>{{ $data['enoguhAssignerCardsCount'] }}</td>
+                        <td>{{ $data['enoguhAssignerCount'] }}</td>
+                        <td>{{ $data['dayAverage'] }}</td>
                         <td>{{ $data['enoguhAssignerRetio'] }}%</td>
                     </tr>
                 @endforeach
