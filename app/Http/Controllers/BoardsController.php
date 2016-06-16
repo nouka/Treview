@@ -3,58 +3,76 @@
 namespace App\Http\Controllers;
 
 use Trello\Client;
-use App\Http\Controllers\Controller;
 
 class BoardsController extends Controller
 {
     /**
-     * レビュー参加者の集計
+     * レビュー参加者の集計.
      *
-     * @param string $key   API_KEY
-     * @param string $token TOKEN
-     * @param string $id    BoardId
-     *
-     * @return void
+     * @param string $key     API_KEY
+     * @param string $token   TOKEN
+     * @param string $boardId BoardId
      */
-    public function assigner($key, $token, $id)
+    public function assigner($key, $token, $boardId)
     {
         $client = new Client();
         $client->authenticate($key, $token, Client::AUTH_URL_CLIENT_ID);
 
         // listのデータを取得
-        $lists = $client->api('board')->lists()->all($id);
+        $lists = $client->api('board')->lists()->all($boardId);
 
         // listからレビューに合格リストのIDを抽出
         $doneLists = $this->extractDoneLists($lists);
 
-        $viewData = array();
-        $i = 0;
+        $viewData = [];
+        $index = 0;
         foreach ($doneLists as $doneList) {
             $allCards = $client->api('lists')->cards()->all($doneList['id']);
+
+            $dayDiff = [];
+            foreach ($allCards as $allCard) {
+                $actions = $client->api('cards')->actions()->all($allCard['id']);
+                $startDate = $this->getReviewStartDate($actions);
+                $endDate = $this->getReviewEndDate($actions);
+                if (empty($startDate) || empty($endDate)) {
+                    continue;
+                }
+                $dayDiff[] = $this->dayDiff($startDate, $endDate);
+            }
+            $dayAverage = $this->dayAverage($dayDiff);
+
             $enoguhAssignerCards = $this->extractEnoughAssignerCards($allCards);
 
             $allCardsCount = count($allCards);
-            $enoguhAssignerCardsCount = count($enoguhAssignerCards);
-            $enoguhAssignerRetio = round(($enoguhAssignerCardsCount / $allCardsCount) * 100, 2);
+            $enoguhAssignerCount = count($enoguhAssignerCards);
+            $enoguhAssignerRetio = round(($enoguhAssignerCount / $allCardsCount) * 100, 2);
 
-            $viewData[$i]['listName'] = $doneList['name'];
-            $viewData[$i]['allCardsCount'] = count($allCards);
-            $viewData[$i]['enoguhAssignerCardsCount'] = count($enoguhAssignerCards);
-            $viewData[$i]['enoguhAssignerRetio'] = round(($enoguhAssignerCardsCount / $allCardsCount) * 100, 2);
+            $viewData[$index]['listName'] = $doneList['name'];
+            $viewData[$index]['allCardsCount'] = $allCardsCount;
+            $viewData[$index]['enoguhAssignerCount'] = $enoguhAssignerCount;
+            $viewData[$index]['enoguhAssignerRetio'] = $enoguhAssignerRetio;
+            $viewData[$index]['dayAverage'] = $dayAverage;
 
-            $i++;
+            ++$index;
         }
 
         return view('assigner', array('assigners' => $viewData));
     }
 
+    /**
+     * レビューに合格レーンを返す.
+     *
+     * @param array $lists レーンのリスト
+     *
+     * @return array
+     */
     private function extractDoneLists($lists)
     {
         if (empty($lists)) {
-            return array();
+            return [];
         }
 
-        $returnArray = array();
+        $returnArray = [];
         foreach ($lists as $list) {
             if (strpos($list['name'], 'レビューに合格') === 0) {
                 $returnArray[] = $list;
@@ -64,9 +82,16 @@ class BoardsController extends Controller
         return $returnArray;
     }
 
+    /**
+     * 3人以上のレビューアがいるカードを返す.
+     *
+     * @param array $cards カードのリスト
+     *
+     * @return array
+     */
     private function extractEnoughAssignerCards($cards)
     {
-        $returnArray = array();
+        $returnArray = [];
         foreach ($cards as $card) {
             if (count($card['idMembers']) > 2) {
                 $returnArray[] = $card;
@@ -74,5 +99,84 @@ class BoardsController extends Controller
         }
 
         return $returnArray;
+    }
+
+    /**
+     * レビュー開始日を返す.
+     *
+     * @param array $cardActions cardActions
+     *
+     * @return string
+     */
+    private function getReviewStartDate($cardActions)
+    {
+        foreach ($cardActions as $cardAction) {
+            if (!isset($cardAction['data']['listBefore']['name'])) {
+                continue;
+            }
+            $before = $cardAction['data']['listBefore']['name'];
+            if ($before === 'レビュー待ち') {
+                return $cardAction['date'];
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * レビュー終了日を返す.
+     *
+     * @param array $cardActions cardActions
+     *
+     * @return string
+     */
+    private function getReviewEndDate($cardActions)
+    {
+        foreach ($cardActions as $cardAction) {
+            if (!isset($cardAction['data']['listAfter']['name'])) {
+                continue;
+            }
+            $after = $cardAction['data']['listAfter']['name'];
+            if (strpos($after, 'レビューに合格') === 0) {
+                return $cardAction['date'];
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * 日付が何日離れているか返す.
+     *
+     * @param string $start 開始日
+     * @param string $end   終了日
+     *
+     * @return float
+     */
+    private function dayDiff($start, $end)
+    {
+        $startTime = strtotime($start);
+        $endTime = strtotime($end);
+
+        $secondDiff = abs($endTime - $startTime);
+
+        return round($secondDiff / (60 * 60 * 24));
+    }
+
+    /**
+     * 日付の平均値を返す.
+     *
+     * @param array $days 日付のリスト
+     *
+     * @return float
+     */
+    private function dayAverage($days)
+    {
+        if (empty($days)) {
+            return 0;
+        }
+        $total = array_sum($days);
+
+        return round($total / count($days), 2);
     }
 }

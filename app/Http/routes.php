@@ -18,7 +18,3 @@ Route::get('/', function () {
 
 // レビュー参加者の集計
 Route::get('/board/assigner/key/{key}/token/{token}/board/{id}', 'BoardsController@assigner');
-
-// バーンダウンチャートの表示
-Route::get('/board/burndown', 'BoardsController@burndown');
-
