@@ -34,6 +34,9 @@ class BoardsController extends Controller
                 $actions = $client->api('cards')->actions()->all($allCard['id']);
                 $startDate = $this->getReviewStartDate($actions);
                 $endDate = $this->getReviewEndDate($actions);
+                if (empty($startDate) || empty($endDate)) {
+                    continue;
+                }
                 $dayDiff[] = $this->dayDiff($startDate, $endDate);
             }
             $dayAverage = $this->dayAverage($dayDiff);
@@ -44,11 +47,11 @@ class BoardsController extends Controller
             $enoguhAssignerCount = count($enoguhAssignerCards);
             $enoguhAssignerRetio = round(($enoguhAssignerCount / $allCardsCount) * 100, 2);
 
-            $viewData[$i]['listName'] = $doneList['name'];
-            $viewData[$i]['allCardsCount'] = $allCardsCount;
-            $viewData[$i]['enoguhAssignerCount'] = $enoguhAssignerCount;
-            $viewData[$i]['enoguhAssignerRetio'] = $enoguhAssignerRetio;
-            $viewData[$i]['dayAverage'] = $dayAverage;
+            $viewData[$index]['listName'] = $doneList['name'];
+            $viewData[$index]['allCardsCount'] = $allCardsCount;
+            $viewData[$index]['enoguhAssignerCount'] = $enoguhAssignerCount;
+            $viewData[$index]['enoguhAssignerRetio'] = $enoguhAssignerRetio;
+            $viewData[$index]['dayAverage'] = $dayAverage;
 
             ++$index;
         }
@@ -169,6 +172,9 @@ class BoardsController extends Controller
      */
     private function dayAverage($days)
     {
+        if (empty($days)) {
+            return 0;
+        }
         $total = array_sum($days);
 
         return round($total / count($days), 2);
